@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Suivi de poids</title>
+<title>Weighty</title>
 <meta name="theme-color" content="#f3f3f2">
 <meta name="description" content="Suivi du poids quotidien avec moyenne hebdomadaire.">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Poids">
+<meta name="apple-mobile-web-app-title" content="Weighty">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script>
@@ -222,6 +222,9 @@ td strong{font-weight:600}
 .auth{max-width:420px;display:grid;gap:18px}
 .stack{display:grid;gap:10px}
 .auth .link{justify-self:start;padding-inline:0}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.brand h1{margin:0}
+.mark{width:52px;height:52px;border-radius:14px;display:block;flex:none}
 </style>
 <script src="config.js"></script>
 <script src="supabase.js"></script>
@@ -239,7 +242,7 @@ td strong{font-weight:600}
   <!-- Connexion -->
   <section id="authView" class="auth" hidden>
     <header>
-      <h1>Suivi de poids</h1>
+      <div class="brand"><img class="mark" src="mark.png" alt="" width="52" height="52"><h1>Weighty</h1></div>
       <p>Connectez-vous pour retrouver vos pesées sur tous vos appareils. Chaque compte ne voit que ses propres données.</p>
       <div class="themes" role="radiogroup" aria-label="Couleurs du site" data-themes></div>
     </header>
@@ -278,7 +281,7 @@ td strong{font-weight:600}
   <!-- Application -->
   <div id="appView" class="wrap" hidden>
     <header>
-      <h1>Suivi de poids</h1>
+      <div class="brand"><img class="mark" src="mark.png" alt="" width="52" height="52"><h1>Weighty</h1></div>
       <p>Une pesée par jour. La moyenne de chaque semaine, du lundi au dimanche, se calcule toute seule.</p>
       <div class="acct">
         <span class="email" id="acctEmail"></span>

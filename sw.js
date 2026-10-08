@@ -1,13 +1,13 @@
 /* Service worker : l'application s'ouvre sans connexion après la première visite.
    Les appels vers la base de données (autre domaine) ne passent jamais par le cache. */
-const VERSION = 'suivi-poids-v3';
+const VERSION = 'suivi-poids-v4';
 const SHELL = [
   './',
   './index.html',
   './config.js',
   './supabase.js',
   './manifest.webmanifest',
-  './icon.svg',
+  './mark.png',
   './icon-180.png',
   './icon-192.png',
   './icon-512.png',
