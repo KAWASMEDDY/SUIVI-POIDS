@@ -1,6 +1,6 @@
 /* Service worker : l'application s'ouvre sans connexion après la première visite.
    Les appels vers la base de données (autre domaine) ne passent jamais par le cache. */
-const VERSION = 'suivi-poids-v2';
+const VERSION = 'suivi-poids-v3';
 const SHELL = [
   './',
   './index.html',
