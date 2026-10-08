@@ -15,6 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
+
 :root{
   /* Mise en page : une colonne de 720px. Moyenne et saisie côte à côte, puis courbe, semaines, historique. */
   --bg:#eef3f3;
@@ -161,70 +162,135 @@ td strong{font-weight:600}
 @media (prefers-reduced-motion: no-preference){
   .btn{transition:opacity .15s}
 }
+
+[hidden]{display:none!important}
+.acct{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin-top:10px;font-size:14px;color:var(--muted)}
+.acct .email{overflow-wrap:anywhere}
+.acct .link{padding-inline:4px}
+.pill{font-family:var(--f-mono);font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.pending{color:var(--ink);border-color:var(--accent)}
+.auth{max-width:420px;display:grid;gap:18px}
+.stack{display:grid;gap:10px}
+.auth .link{justify-self:start;padding-inline:0}
 </style>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
 </head>
 <body>
 
 <div class="wrap">
-  <header>
-    <h1>Suivi de poids</h1>
-    <p>Une pesée par jour. La moyenne de chaque semaine, du lundi au dimanche, se calcule toute seule.</p>
-  </header>
 
-  <div class="top">
-    <section class="avg" aria-live="polite">
-      <p class="label" id="avgLabel">Moyenne de cette semaine</p>
-      <p class="big" id="avgValue">—<small>kg</small></p>
-      <p class="sub" id="avgSub">Enregistrez votre première pesée pour voir la moyenne.</p>
-      <p class="delta" id="avgDelta"></p>
-      <div class="last" id="lastBox" hidden>
-        <span>Dernier poids</span>
-        <span><strong id="lastKg"></strong> <span id="lastDate" class="sub"></span></span>
+  <!-- Base de données non configurée -->
+  <section id="setupView" class="panel auth" hidden>
+    <h2>Connexion à la base de données à renseigner</h2>
+    <p class="note">Ouvrez le fichier <strong>config.js</strong> et remplacez l’adresse et la clé par celles de votre projet Supabase. Une fois le fichier enregistré et mis en ligne, rechargez cette page.</p>
+  </section>
+
+  <!-- Connexion -->
+  <section id="authView" class="auth" hidden>
+    <header>
+      <h1>Suivi de poids</h1>
+      <p>Connectez-vous pour retrouver vos pesées sur tous vos appareils. Chaque compte ne voit que ses propres données.</p>
+    </header>
+    <form class="panel stack" id="authForm" novalidate>
+      <div class="field">
+        <label class="label" for="email">Adresse e-mail</label>
+        <input type="email" id="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false">
       </div>
+      <div class="field">
+        <label class="label" for="password">Mot de passe</label>
+        <input type="password" id="password" autocomplete="current-password">
+      </div>
+      <button class="btn" id="signInBtn" type="submit">Se connecter</button>
+      <button class="btn ghost" id="signUpBtn" type="button">Créer un compte</button>
+      <button class="link" id="forgotBtn" type="button">Mot de passe oublié</button>
+      <p class="status" id="authStatus" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- Nouveau mot de passe -->
+  <section id="recoverView" class="auth" hidden>
+    <header>
+      <h1>Nouveau mot de passe</h1>
+      <p>Choisissez un mot de passe de 8 caractères minimum.</p>
+    </header>
+    <form class="panel stack" id="recoverForm" novalidate>
+      <div class="field">
+        <label class="label" for="newPassword">Nouveau mot de passe</label>
+        <input type="password" id="newPassword" autocomplete="new-password">
+      </div>
+      <button class="btn" type="submit">Enregistrer le mot de passe</button>
+      <p class="status" id="recoverStatus" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- Application -->
+  <div id="appView" class="wrap" hidden>
+    <header>
+      <h1>Suivi de poids</h1>
+      <p>Une pesée par jour. La moyenne de chaque semaine, du lundi au dimanche, se calcule toute seule.</p>
+      <div class="acct">
+        <span class="email" id="acctEmail"></span>
+        <span class="pill" id="syncPill">Synchronisé</span>
+        <button class="link" id="signOutBtn" type="button">Se déconnecter</button>
+      </div>
+    </header>
+
+    <div class="top">
+      <section class="avg" aria-live="polite">
+        <p class="label" id="avgLabel">Moyenne de cette semaine</p>
+        <p class="big" id="avgValue">—<small>kg</small></p>
+        <p class="sub" id="avgSub">Enregistrez votre première pesée pour voir la moyenne.</p>
+        <p class="delta" id="avgDelta"></p>
+        <div class="last" id="lastBox" hidden>
+          <span>Dernier poids</span>
+          <span><strong id="lastKg"></strong> <span id="lastDate" class="sub"></span></span>
+        </div>
+      </section>
+
+      <form class="panel" id="form" novalidate>
+        <div class="field">
+          <label class="label" for="date">Date</label>
+          <input type="date" id="date" required>
+        </div>
+        <div class="field">
+          <label class="label" for="kg">Poids (kg)</label>
+          <input type="text" id="kg" inputmode="decimal" autocomplete="off" placeholder="72,4" required>
+        </div>
+        <button class="btn" id="save" type="submit">Enregistrer</button>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <section class="panel" aria-labelledby="hChart">
+      <h2 id="hChart">Les 12 dernières semaines</h2>
+      <div class="chart" id="chart"></div>
+      <p class="legend" id="legend" hidden>
+        <span><i class="sw-dot"></i>Pesée du jour</span>
+        <span><i class="sw-bar"></i>Moyenne de la semaine</span>
+      </p>
     </section>
 
-    <form class="panel" id="form" novalidate>
-      <div class="field">
-        <label class="label" for="date">Date</label>
-        <input type="date" id="date" required>
+    <section class="plain" aria-labelledby="hWeeks">
+      <h2 id="hWeeks">Moyennes par semaine</h2>
+      <div class="scroll" id="weeks"></div>
+    </section>
+
+    <section class="plain" aria-labelledby="hHist">
+      <h2 id="hHist">Historique des pesées</h2>
+      <div id="history"></div>
+    </section>
+
+    <section class="plain" aria-labelledby="hBackup">
+      <h2 id="hBackup">Copie de sécurité</h2>
+      <p class="note" id="storeNote"></p>
+      <div class="backup">
+        <button class="btn ghost" type="button" id="exportBtn">Exporter mes pesées</button>
+        <button class="btn ghost" type="button" id="importBtn">Importer un fichier</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
       </div>
-      <div class="field">
-        <label class="label" for="kg">Poids (kg)</label>
-        <input type="text" id="kg" inputmode="decimal" autocomplete="off" placeholder="72,4" required>
-      </div>
-      <button class="btn" id="save" type="submit">Enregistrer</button>
-      <p class="status" id="status" role="status" aria-live="polite"></p>
-    </form>
+    </section>
   </div>
-
-  <section class="panel" aria-labelledby="hChart">
-    <h2 id="hChart">Les 12 dernières semaines</h2>
-    <div class="chart" id="chart"></div>
-    <p class="legend" id="legend" hidden>
-      <span><i class="sw-dot"></i>Pesée du jour</span>
-      <span><i class="sw-bar"></i>Moyenne de la semaine</span>
-    </p>
-  </section>
-
-  <section class="plain" aria-labelledby="hWeeks">
-    <h2 id="hWeeks">Moyennes par semaine</h2>
-    <div class="scroll" id="weeks"></div>
-  </section>
-
-  <section class="plain" aria-labelledby="hHist">
-    <h2 id="hHist">Historique des pesées</h2>
-    <div id="history"></div>
-  </section>
-
-  <section class="plain" aria-labelledby="hBackup">
-    <h2 id="hBackup">Sauvegarde</h2>
-    <p class="note" id="storeNote"></p>
-    <div class="backup">
-      <button class="btn ghost" type="button" id="exportBtn">Exporter mes pesées</button>
-      <button class="btn ghost" type="button" id="importBtn">Importer une sauvegarde</button>
-      <input type="file" id="importFile" accept="application/json,.json" hidden>
-    </div>
-  </section>
 </div>
 
 <script>
@@ -234,8 +300,8 @@ td strong{font-weight:600}
   var dmFmt = new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'});
   var fullFmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
   var DAY = 86400000;
-  var LS_KEY = 'suivi-poids-v1';
 
+  /* ---------- Dates ---------- */
   function pad(n){ return String(n).padStart(2,'0'); }
   function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
   function toUTC(s){ var p=s.split('-').map(Number); return Date.UTC(p[0],p[1]-1,p[2]); }
@@ -257,14 +323,37 @@ td strong{font-weight:600}
     return (r>0?'+':'−')+nf1.format(Math.abs(r));
   }
 
+  /* ---------- Connexion à Supabase ---------- */
+  var CFG = window.APP_CONFIG || {};
+  var configured = !!(CFG.supabaseUrl && CFG.supabaseAnonKey) &&
+    !/VOTRE/i.test(String(CFG.supabaseUrl)+String(CFG.supabaseAnonKey)) &&
+    !!(window.supabase && window.supabase.createClient);
+  var sb = null;
+  if(configured){
+    try{
+      sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
+        auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}
+      });
+    }catch(e){ sb = null; }
+  }
+
+  /* ---------- État ---------- */
   var entries = [];
-  var mode = 'loading';           // loading | db | local
-  var col = null;
-  var showAll = false;
-  var confirmDate = null;
+  var pending = [];            // opérations pas encore envoyées : {op:'set',date,kg} | {op:'del',date}
+  var userId = null, userEmail = '';
+  var loading = false, recovering = false, syncing = false, syncError = false;
+  var showAll = false, confirmDate = null, currentView = '', lastSync = 0;
+
+  function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  function cacheKey(){ return 'sp-cache-'+userId; }
+  function pendKey(){ return 'sp-pending-'+userId; }
+  function validEntry(o){
+    return o && typeof o.date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date) && typeof o.kg==='number' && isFinite(o.kg);
+  }
 
   function sortedAsc(){ return entries.slice().sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; }); }
-
   function weeksAsc(){
     var map = {};
     entries.forEach(function(e){
@@ -275,7 +364,7 @@ td strong{font-weight:600}
     return Object.keys(map).sort().map(function(k){ var w=map[k]; return {monday:w.monday,n:w.n,avg:w.sum/w.n}; });
   }
 
-  /* ---------- Résumé ---------- */
+  /* ---------- Affichage : résumé ---------- */
   function renderSummary(){
     var weeks = weeksAsc();
     var curMon = mondayOf(todayStr());
@@ -283,7 +372,7 @@ td strong{font-weight:600}
     if(!weeks.length){
       label.textContent='Moyenne de cette semaine';
       val.innerHTML='—<small>kg</small>';
-      sub.textContent = mode==='loading' ? 'Chargement de vos pesées…' : 'Enregistrez votre première pesée pour voir la moyenne.';
+      sub.textContent = loading ? 'Chargement de vos pesées…' : 'Enregistrez votre première pesée pour voir la moyenne.';
       delta.textContent=''; box.hidden=true; return;
     }
     var idx = weeks.findIndex(function(w){ return w.monday===curMon; });
@@ -305,10 +394,11 @@ td strong{font-weight:600}
     box.hidden=false;
   }
 
-  /* ---------- Courbe ---------- */
+  /* ---------- Affichage : courbe ---------- */
   function renderChart(){
+    if(currentView!=='app') return;
     var box=$('chart'), legend=$('legend');
-    if(mode==='loading'){ box.innerHTML='<p class="empty">Chargement de vos pesées…</p>'; legend.hidden=true; return; }
+    if(loading && !entries.length){ box.innerHTML='<p class="empty">Chargement de vos pesées…</p>'; legend.hidden=true; return; }
     if(!entries.length){ box.innerHTML='<p class="empty">La courbe apparaît dès votre première pesée.</p>'; legend.hidden=true; return; }
 
     var today=todayStr();
@@ -369,7 +459,7 @@ td strong{font-weight:600}
     legend.hidden=false;
   }
 
-  /* ---------- Tableau des semaines ---------- */
+  /* ---------- Affichage : semaines et historique ---------- */
   function renderWeeks(){
     var box=$('weeks');
     var weeks=weeksAsc();
@@ -384,7 +474,6 @@ td strong{font-weight:600}
     box.innerHTML='<table><thead><tr><th>Semaine</th><th class="num">Moyenne</th><th class="num">Pesées</th><th class="num">Écart</th></tr></thead><tbody>'+rows+'</tbody></table>';
   }
 
-  /* ---------- Historique ---------- */
   function renderHistory(){
     var box=$('history');
     if(!entries.length){ box.innerHTML='<p class="note">Vos pesées apparaissent ici, de la plus récente à la plus ancienne.</p>'; return; }
@@ -401,9 +490,18 @@ td strong{font-weight:600}
     box.innerHTML=html;
   }
 
-  function renderNote(){
-    var n=$('storeNote');
-    n.textContent='Vos pesées sont enregistrées sur cet appareil, dans cette application, et nulle part ailleurs. Exportez-les de temps en temps pour en garder une copie, ou pour les retrouver sur un autre téléphone.';
+  function renderSync(){
+    var p=$('syncPill'), n=pending.length;
+    if(n){
+      p.textContent=(navigator.onLine===false?'Hors connexion · ':'Envoi en cours · ')+n+' en attente';
+      p.className='pill pending';
+    } else if(syncError){
+      p.textContent='Synchronisation à relancer';
+      p.className='pill pending';
+    } else {
+      p.textContent='Synchronisé';
+      p.className='pill';
+    }
   }
 
   function updateSaveLabel(){
@@ -413,59 +511,208 @@ td strong{font-weight:600}
   }
 
   function render(){
-    renderSummary(); renderChart(); renderWeeks(); renderHistory(); renderNote(); updateSaveLabel();
+    if(currentView!=='app') return;
+    $('acctEmail').textContent=userEmail;
+    $('storeNote').textContent='Vos pesées sont enregistrées en ligne sur votre compte et synchronisées entre vos appareils. Vous seul y avez accès. Vous pouvez aussi en garder une copie dans un fichier.';
+    renderSummary(); renderChart(); renderWeeks(); renderHistory(); renderSync(); updateSaveLabel();
   }
 
-  /* ---------- Stockage ---------- */
-  function validEntry(o){
-    return o && typeof o.date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date) && typeof o.kg==='number' && isFinite(o.kg);
-  }
-  function loadLocal(){
-    try{
-      var raw=localStorage.getItem(LS_KEY);
-      var arr=raw?JSON.parse(raw):[];
-      entries=Array.isArray(arr)?arr.filter(validEntry):[];
-    }catch(e){ entries=[]; }
-  }
-  function saveLocal(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(entries)); }catch(e){} }
-
-  function startLocal(){ mode='local'; loadLocal(); render(); }
-
-  function say(msg,isErr){
-    var s=$('status'); s.textContent=msg; s.className='status'+(isErr?' err':'');
+  function showView(name){
+    ['setupView','authView','recoverView','appView'].forEach(function(id){ $(id).hidden = (id!==name+'View'); });
+    currentView=name;
+    if(name==='app') render();
   }
 
-  async function saveEntry(date,kg){
-    if(mode==='db'){ await col.doc('w-'+date).set({date:date,kg:kg}); return; }
+  function say(msg,isErr){ var s=$('status'); s.textContent=msg; s.className='status'+(isErr?' err':''); }
+
+  /* ---------- Synchronisation ---------- */
+  function upsertLocal(date,kg){
     var i=entries.findIndex(function(e){ return e.date===date; });
     if(i>=0) entries[i]={date:date,kg:kg}; else entries.push({date:date,kg:kg});
-    saveLocal(); render();
   }
-  async function removeEntry(date){
-    if(mode==='db'){ await col.doc('w-'+date).delete(); return; }
-    entries=entries.filter(function(e){ return e.date!==date; });
-    saveLocal(); render();
+  function queue(o){
+    pending=pending.filter(function(x){ return x.date!==o.date; });
+    pending.push(o);
+    lsSet(pendKey(),pending);
+  }
+  function persistLocal(){ lsSet(cacheKey(),entries); }
+
+  async function flush(){
+    if(!sb || !userId || syncing) return;
+    syncing=true; syncError=false;
+    try{
+      while(pending.length){
+        var o=pending[0], r, done;
+        if(o.op==='set'){
+          var batch=[];
+          for(var i=0;i<pending.length && pending[i].op==='set' && batch.length<200;i++) batch.push(pending[i]);
+          r=await sb.from('weights').upsert(
+            batch.map(function(b){ return {user_id:userId,day:b.date,kg:b.kg}; }),
+            {onConflict:'user_id,day'}
+          );
+          done=batch;
+        } else {
+          r=await sb.from('weights').delete().eq('day',o.date);
+          done=[o];
+        }
+        if(r.error){
+          // Une donnée refusée par la base (hors limites) ne doit pas bloquer la file.
+          if(/^(22|23)/.test(r.error.code||'')){ /* on l'abandonne */ } else { throw r.error; }
+        }
+        pending=pending.filter(function(x){ return done.indexOf(x)<0; });
+        lsSet(pendKey(),pending); renderSync();
+      }
+    }catch(e){ syncError=true; }
+    finally{ syncing=false; renderSync(); }
   }
 
-  /* ---------- Événements ---------- */
-  $('form').addEventListener('submit', async function(ev){
+  async function fetchAll(){
+    var all=[], from=0, size=1000;
+    for(;;){
+      var r=await sb.from('weights').select('day,kg').order('day',{ascending:true}).range(from,from+size-1);
+      if(r.error) throw r.error;
+      all=all.concat(r.data);
+      if(r.data.length<size) break;
+      from+=size;
+    }
+    var map={};
+    all.forEach(function(x){ map[x.day]=Number(x.kg); });
+    pending.forEach(function(o){ if(o.op==='set') map[o.date]=o.kg; else delete map[o.date]; });
+    entries=Object.keys(map).map(function(d){ return {date:d,kg:map[d]}; });
+    persistLocal();
+  }
+
+  async function sync(){
+    if(!sb || !userId) return;
+    lastSync=Date.now();
+    await flush();
+    if(!pending.length){
+      try{ await fetchAll(); syncError=false; }catch(e){ syncError=true; }
+    }
+    loading=false;
+    render();
+  }
+
+  function saveEntry(date,kg){
+    upsertLocal(date,kg); persistLocal(); queue({op:'set',date:date,kg:kg});
+    render(); flush();
+  }
+  function removeEntry(date){
+    entries=entries.filter(function(e){ return e.date!==date; }); persistLocal(); queue({op:'del',date:date});
+    render(); flush();
+  }
+
+  /* ---------- Session ---------- */
+  function handleSession(session){
+    if(recovering) return;
+    if(!session || !session.user){
+      userId=null; userEmail=''; entries=[]; pending=[];
+      $('password').value='';
+      showView('auth');
+      return;
+    }
+    if(userId===session.user.id && currentView==='app') return;   // simple renouvellement du jeton
+    userId=session.user.id; userEmail=session.user.email||'';
+    var cached=lsGet(cacheKey());
+    entries=Array.isArray(cached)?cached.filter(validEntry):[];
+    var p=lsGet(pendKey());
+    pending=Array.isArray(p)?p.filter(function(o){ return o && (o.op==='set'||o.op==='del') && typeof o.date==='string'; }):[];
+    loading=!Array.isArray(cached);
+    showView('app');
+    sync();
+  }
+
+  function authSay(msg,isErr){ var s=$('authStatus'); s.textContent=msg; s.className='status'+(isErr?' err':''); }
+  function authBusy(b){ ['signInBtn','signUpBtn','forgotBtn'].forEach(function(id){ $(id).disabled=b; }); }
+  function authErr(e){
+    var m=(e && e.message) || '';
+    if(/invalid login/i.test(m)) return 'E-mail ou mot de passe incorrect.';
+    if(/not confirmed/i.test(m)) return 'Confirmez d’abord votre adresse e-mail avec le lien que nous vous avons envoyé.';
+    if(/already registered/i.test(m)) return 'Un compte existe déjà avec cette adresse.';
+    if(/rate limit|too many|seconds/i.test(m)) return 'Trop de tentatives. Réessayez dans quelques minutes.';
+    if(/password/i.test(m)) return 'Choisissez un mot de passe plus long ou plus complexe (8 caractères minimum).';
+    if(/fetch|network|load failed/i.test(m)) return 'Connexion impossible. Vérifiez votre accès à Internet.';
+    return 'Une erreur est survenue. Réessayez dans un instant.';
+  }
+  function backHere(){ return location.origin+location.pathname; }
+
+  /* ---------- Événements : connexion ---------- */
+  $('authForm').addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    var email=$('email').value.trim(), password=$('password').value;
+    if(!email || !password){ authSay('Entrez votre adresse e-mail et votre mot de passe.',true); return; }
+    authBusy(true); authSay('Connexion…',false);
+    try{
+      var r=await sb.auth.signInWithPassword({email:email,password:password});
+      authSay(r.error?authErr(r.error):'',!!r.error);
+    }catch(e){ authSay(authErr(e),true); }
+    authBusy(false);
+  });
+
+  $('signUpBtn').addEventListener('click', async function(){
+    var email=$('email').value.trim(), password=$('password').value;
+    if(!email){ authSay('Entrez votre adresse e-mail.',true); return; }
+    if(password.length<8){ authSay('Choisissez un mot de passe de 8 caractères minimum.',true); return; }
+    authBusy(true); authSay('Création du compte…',false);
+    try{
+      var r=await sb.auth.signUp({email:email,password:password,options:{emailRedirectTo:backHere()}});
+      if(r.error) authSay(authErr(r.error),true);
+      else if(r.data && r.data.session) authSay('',false);
+      else if(r.data && r.data.user && r.data.user.identities && r.data.user.identities.length===0)
+        authSay('Un compte existe déjà avec cette adresse. Connectez-vous, ou utilisez « Mot de passe oublié ».',true);
+      else authSay('Compte créé. Un e-mail de confirmation vient de vous être envoyé. Cliquez sur le lien, puis revenez vous connecter.',false);
+    }catch(e){ authSay(authErr(e),true); }
+    authBusy(false);
+  });
+
+  $('forgotBtn').addEventListener('click', async function(){
+    var email=$('email').value.trim();
+    if(!email){ authSay('Entrez d’abord votre adresse e-mail, puis touchez « Mot de passe oublié ».',true); return; }
+    authBusy(true);
+    try{
+      var r=await sb.auth.resetPasswordForEmail(email,{redirectTo:backHere()});
+      if(r.error) authSay(authErr(r.error),true);
+      else authSay('Si un compte existe pour cette adresse, un e-mail de réinitialisation vient d’être envoyé.',false);
+    }catch(e){ authSay(authErr(e),true); }
+    authBusy(false);
+  });
+
+  $('recoverForm').addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    var pw=$('newPassword').value, s=$('recoverStatus');
+    if(pw.length<8){ s.textContent='Choisissez un mot de passe de 8 caractères minimum.'; s.className='status err'; return; }
+    try{
+      var r=await sb.auth.updateUser({password:pw});
+      if(r.error){ s.textContent=authErr(r.error); s.className='status err'; return; }
+      recovering=false; $('newPassword').value='';
+      try{ history.replaceState(null,'',location.pathname); }catch(e){}
+      var g=await sb.auth.getSession();
+      handleSession(g.data && g.data.session);
+    }catch(e){ s.textContent=authErr(e); s.className='status err'; }
+  });
+
+  $('signOutBtn').addEventListener('click', async function(){
+    await flush();
+    if(pending.length){ say('Des pesées ne sont pas encore envoyées. Reconnectez-vous à Internet avant de vous déconnecter.',true); return; }
+    var uid=userId;
+    try{ await sb.auth.signOut(); }catch(e){}
+    lsDel('sp-cache-'+uid); lsDel('sp-pending-'+uid);
+    handleSession(null);
+  });
+
+  /* ---------- Événements : saisie ---------- */
+  $('form').addEventListener('submit', function(ev){
     ev.preventDefault();
     var date=$('date').value;
     var raw=$('kg').value.trim().replace(',','.');
     var kg=Math.round(Number(raw)*10)/10;
-    if(mode==='loading'){ say('Un instant, vos données se chargent.',true); return; }
     if(!date || date>todayStr()){ say('Choisissez une date qui n’est pas dans le futur.',true); return; }
     if(!raw || !isFinite(kg) || kg<20 || kg>400){ say('Entrez un poids en kg entre 20 et 400, par exemple 72,4.',true); return; }
-    var btn=$('save'); btn.disabled=true;
-    try{
-      await saveEntry(date,kg);
-      say('Pesée du '+fmtDM(date)+' enregistrée : '+kgText(kg)+' kg.',false);
-      $('kg').value='';
-    }catch(err){
-      say(err && err.code==='invalid_argument' ? 'Enregistrement refusé : votre accès à cette page est en lecture seule.' : 'L’enregistrement a échoué. Réessayez dans un instant.', true);
-    }finally{
-      btn.disabled=false; updateSaveLabel();
-    }
+    saveEntry(date,kg);
+    say(navigator.onLine===false
+      ? 'Pesée du '+fmtDM(date)+' enregistrée sur cet appareil. Elle sera envoyée dès le retour de la connexion.'
+      : 'Pesée du '+fmtDM(date)+' enregistrée : '+kgText(kg)+' kg.', false);
+    $('kg').value='';
   });
 
   $('date').addEventListener('change', function(){
@@ -475,17 +722,15 @@ td strong{font-weight:600}
     updateSaveLabel();
   });
 
-  $('history').addEventListener('click', async function(ev){
+  $('history').addEventListener('click', function(ev){
     var b=ev.target.closest('button'); if(!b) return;
     var act=b.getAttribute('data-act'), date=b.getAttribute('data-date');
     if(act==='toggle'){ showAll=!showAll; renderHistory(); }
     else if(act==='del'){ confirmDate=date; renderHistory(); }
     else if(act==='cancel'){ confirmDate=null; renderHistory(); }
     else if(act==='confirm'){
-      confirmDate=null;
-      try{ await removeEntry(date); say('Pesée du '+fmtDM(date)+' supprimée.',false); }
-      catch(err){ say('La suppression a échoué. Réessayez dans un instant.',true); }
-      renderHistory();
+      confirmDate=null; removeEntry(date);
+      say('Pesée du '+fmtDM(date)+' supprimée.',false);
     }
     else if(act==='edit'){
       var e=entries.find(function(x){ return x.date===date; });
@@ -498,20 +743,7 @@ td strong{font-weight:600}
     }
   });
 
-  /* ---------- Démarrage ---------- */
-  var t=todayStr();
-  $('date').value=t; $('date').max=t;
-  render();
-
-  var rz=null;
-  if(window.ResizeObserver){
-    new ResizeObserver(function(){
-      if(rz) cancelAnimationFrame(rz);
-      rz=requestAnimationFrame(function(){ renderChart(); });
-    }).observe($('chart'));
-  }
-
-  /* ---------- Sauvegarde ---------- */
+  /* ---------- Copie de sécurité ---------- */
   $('exportBtn').addEventListener('click', function(){
     if(!entries.length){ say('Aucune pesée à exporter pour le moment.',true); return; }
     var blob=new Blob([JSON.stringify({app:'suivi-poids',version:1,entries:sortedAsc()},null,2)],{type:'application/json'});
@@ -520,7 +752,7 @@ td strong{font-weight:600}
     a.href=url; a.download='suivi-poids-'+todayStr()+'.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); },1000);
-    say('Sauvegarde exportée ('+entries.length+' pesées).',false);
+    say('Copie exportée ('+entries.length+' pesées).',false);
   });
   $('importBtn').addEventListener('click', function(){ $('importFile').click(); });
   $('importFile').addEventListener('change', function(){
@@ -534,15 +766,14 @@ td strong{font-weight:600}
         var added=0;
         arr.filter(validEntry).forEach(function(o){
           var kg=Math.round(o.kg*10)/10;
-          if(kg<20||kg>400) return;
-          var i=entries.findIndex(function(e){ return e.date===o.date; });
-          if(i>=0) entries[i]={date:o.date,kg:kg}; else entries.push({date:o.date,kg:kg});
+          if(kg<20||kg>400||o.date>todayStr()) return;
+          upsertLocal(o.date,kg); queue({op:'set',date:o.date,kg:kg});
           added++;
         });
-        saveLocal(); render();
+        persistLocal(); render(); flush();
         say(added+' pesée'+(added>1?'s':'')+' importée'+(added>1?'s':'')+'.',false);
       }catch(e){
-        say('Ce fichier n’est pas une sauvegarde valide.',true);
+        say('Ce fichier n’est pas une copie valide.',true);
       }
       $('importFile').value='';
     };
@@ -550,7 +781,36 @@ td strong{font-weight:600}
   });
 
   /* ---------- Démarrage ---------- */
-  startLocal();
+  var t=todayStr();
+  $('date').value=t; $('date').max=t;
+
+  if(window.ResizeObserver){
+    var rz=null;
+    new ResizeObserver(function(){
+      if(rz) cancelAnimationFrame(rz);
+      rz=requestAnimationFrame(function(){ renderChart(); });
+    }).observe($('chart'));
+  }
+
+  window.addEventListener('online', function(){ if(userId) sync(); renderSync(); });
+  window.addEventListener('offline', renderSync);
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible' && userId && Date.now()-lastSync>30000) sync();
+  });
+
+  if(!sb){
+    showView('setup');
+  } else {
+    sb.auth.onAuthStateChange(function(event,session){
+      // Pas d'appel à la base directement dans ce rappel : on le décale.
+      setTimeout(function(){
+        if(event==='PASSWORD_RECOVERY'){ recovering=true; showView('recover'); return; }
+        if(event==='SIGNED_OUT') recovering=false;
+        handleSession(session);
+      },0);
+    });
+    setTimeout(function(){ if(!currentView) showView('auth'); },4000);
+  }
 
   if('serviceWorker' in navigator){
     window.addEventListener('load', function(){

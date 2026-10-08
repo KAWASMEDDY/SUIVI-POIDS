@@ -1,8 +1,11 @@
-/* Service worker : l'application s'ouvre sans connexion après la première visite. */
-const VERSION = 'suivi-poids-v1';
+/* Service worker : l'application s'ouvre sans connexion après la première visite.
+   Les appels vers la base de données (autre domaine) ne passent jamais par le cache. */
+const VERSION = 'suivi-poids-v2';
 const SHELL = [
   './',
   './index.html',
+  './config.js',
+  './supabase.js',
   './manifest.webmanifest',
   './icon.svg',
   './icon-180.png',
@@ -30,7 +33,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Polices Google : on les garde en cache après le premier chargement.
+  // Polices Google : gardées en cache après le premier chargement.
   if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     event.respondWith(
       caches.open(VERSION).then((cache) =>
@@ -46,6 +49,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Tout autre domaine (dont la base de données) : jamais intercepté.
   if (url.origin !== self.location.origin) return;
 
   // Pages : réseau d'abord pour recevoir les mises à jour, cache en secours.
@@ -62,12 +66,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Autres fichiers de l'application : cache d'abord.
+  // Fichiers de l'application : cache tout de suite, mis à jour en arrière-plan.
   event.respondWith(
-    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-      const copy = res.clone();
-      caches.open(VERSION).then((cache) => cache.put(req, copy));
-      return res;
-    }))
+    caches.open(VERSION).then((cache) =>
+      cache.match(req).then((hit) => {
+        const net = fetch(req).then((res) => {
+          if (res.ok) cache.put(req, res.clone());
+          return res;
+        }).catch(() => hit);
+        return hit || net;
+      })
+    )
   );
 });
