@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Suivi de poids</title>
+<meta name="theme-color" content="#0b7a75">
+<meta name="description" content="Suivi du poids quotidien avec moyenne hebdomadaire.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Poids">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  /* Mise en page : une colonne de 720px. Moyenne et saisie côte à côte, puis courbe, semaines, historique. */
+  --bg:#eef3f3;
+  --surface:#fbfdfd;
+  --ink:#10252a;
+  --muted:#566d72;
+  --line:#d3dfe0;
+  --accent:#0b7a75;
+  --accent-ink:#ffffff;
+  --soft:#dcebea;
+  --dot:#7f9ca0;
+  --danger:#a63a2b;
+  --f-display:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c1819;
+    --surface:#132426;
+    --ink:#e6f1f1;
+    --muted:#8fa9ad;
+    --line:#233b3e;
+    --accent:#3fc1b6;
+    --accent-ink:#05211f;
+    --soft:#173436;
+    --dot:#6f8d91;
+    --danger:#ff9a8a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1819;
+  --surface:#132426;
+  --ink:#e6f1f1;
+  --muted:#8fa9ad;
+  --line:#233b3e;
+  --accent:#3fc1b6;
+  --accent-ink:#05211f;
+  --soft:#173436;
+  --dot:#6f8d91;
+  --danger:#ff9a8a;
+  color-scheme:dark;
+}
+
+html{color-scheme:light;-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--f-body);
+  font-size:15px;
+  line-height:1.5;
+  padding-block:calc(28px + env(safe-area-inset-top, 0px)) calc(48px + env(safe-area-inset-bottom, 0px));
+  padding-inline:max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+}
+*,*::before,*::after{box-sizing:border-box}
+.wrap{max-width:720px;margin-inline:auto;display:grid;gap:22px}
+.wrap > *{min-width:0}
+
+header h1{
+  font-family:var(--f-display);
+  font-weight:700;
+  font-size:30px;
+  line-height:1.1;
+  letter-spacing:-0.01em;
+  margin:0 0 4px;
+  text-wrap:balance;
+}
+header p{margin:0;color:var(--muted);max-width:56ch}
+
+.top{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+@media (max-width:620px){.top{grid-template-columns:minmax(0,1fr)}}
+
+.avg{background:var(--soft);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:6px}
+.label{font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.big{font-family:var(--f-display);font-weight:700;font-size:64px;line-height:1;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;margin:2px 0 0}
+.big small{font-size:20px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:6px}
+.sub{margin:0;color:var(--muted);font-size:14px}
+.delta{margin:6px 0 0;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums}
+.last{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;font-size:14px;flex-wrap:wrap}
+.last strong{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+form{display:grid;gap:12px;align-content:start}
+.field{display:grid;gap:6px}
+input{
+  font:inherit;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:8px;
+  height:44px;padding-inline:12px;width:100%;min-width:0;
+}
+input#kg{font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{
+  font:inherit;font-weight:600;cursor:pointer;
+  background:var(--accent);color:var(--accent-ink);
+  border:0;border-radius:8px;height:46px;padding-inline:16px;
+}
+.btn:disabled{opacity:.6;cursor:default}
+.status{min-height:20px;margin:0;font-size:14px;color:var(--accent)}
+.status.err{color:var(--danger)}
+
+h2{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-0.005em;margin:0 0 10px;text-wrap:balance}
+section.plain{border-top:1px solid var(--line);padding-top:18px}
+
+.chart{min-height:250px;position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.chart .tick{fill:var(--muted);font:11px var(--f-mono)}
+.chart .gridline{stroke:var(--line);stroke-width:1}
+.chart .weekline{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+.chart .daily{fill:none;stroke:var(--dot);stroke-width:1;opacity:.55}
+.chart .dot{fill:var(--dot)}
+.chart .dot-last{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.chart .wavg{stroke:var(--accent);stroke-width:3.5;stroke-linecap:round}
+.chart .wlabel{fill:var(--accent);font:500 11px var(--f-mono);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+.empty{margin:0;padding:80px 12px;text-align:center;color:var(--muted)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 0;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw-dot{width:8px;height:8px;border-radius:50%;background:var(--dot);display:inline-block}
+.sw-bar{width:18px;height:4px;border-radius:2px;background:var(--accent);display:inline-block}
+
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th.num,td.num{text-align:right}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td .range{display:block;color:var(--muted);font-size:13px}
+td strong{font-weight:600}
+
+.list{list-style:none;margin:0;padding:0}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.row .d{flex:1 1 140px;min-width:0}
+.row .k{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:500;min-width:84px;text-align:right}
+.row .acts{display:flex;gap:4px}
+.link{font:inherit;font-size:14px;background:none;border:0;color:var(--accent);cursor:pointer;padding:8px;border-radius:6px;min-height:36px}
+.link.warn{color:var(--danger);font-weight:600}
+.more{margin-top:10px}
+.note{margin:0;font-size:13px;color:var(--muted)}
+.backup{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent);height:42px;font-weight:500}
+.up{color:var(--ink)}
+@media (prefers-reduced-motion: no-preference){
+  .btn{transition:opacity .15s}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Suivi de poids</h1>
+    <p>Une pesée par jour. La moyenne de chaque semaine, du lundi au dimanche, se calcule toute seule.</p>
+  </header>
+
+  <div class="top">
+    <section class="avg" aria-live="polite">
+      <p class="label" id="avgLabel">Moyenne de cette semaine</p>
+      <p class="big" id="avgValue">—<small>kg</small></p>
+      <p class="sub" id="avgSub">Enregistrez votre première pesée pour voir la moyenne.</p>
+      <p class="delta" id="avgDelta"></p>
+      <div class="last" id="lastBox" hidden>
+        <span>Dernier poids</span>
+        <span><strong id="lastKg"></strong> <span id="lastDate" class="sub"></span></span>
+      </div>
+    </section>
+
+    <form class="panel" id="form" novalidate>
+      <div class="field">
+        <label class="label" for="date">Date</label>
+        <input type="date" id="date" required>
+      </div>
+      <div class="field">
+        <label class="label" for="kg">Poids (kg)</label>
+        <input type="text" id="kg" inputmode="decimal" autocomplete="off" placeholder="72,4" required>
+      </div>
+      <button class="btn" id="save" type="submit">Enregistrer</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+
+  <section class="panel" aria-labelledby="hChart">
+    <h2 id="hChart">Les 12 dernières semaines</h2>
+    <div class="chart" id="chart"></div>
+    <p class="legend" id="legend" hidden>
+      <span><i class="sw-dot"></i>Pesée du jour</span>
+      <span><i class="sw-bar"></i>Moyenne de la semaine</span>
+    </p>
+  </section>
+
+  <section class="plain" aria-labelledby="hWeeks">
+    <h2 id="hWeeks">Moyennes par semaine</h2>
+    <div class="scroll" id="weeks"></div>
+  </section>
+
+  <section class="plain" aria-labelledby="hHist">
+    <h2 id="hHist">Historique des pesées</h2>
+    <div id="history"></div>
+  </section>
+
+  <section class="plain" aria-labelledby="hBackup">
+    <h2 id="hBackup">Sauvegarde</h2>
+    <p class="note" id="storeNote"></p>
+    <div class="backup">
+      <button class="btn ghost" type="button" id="exportBtn">Exporter mes pesées</button>
+      <button class="btn ghost" type="button" id="importBtn">Importer une sauvegarde</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var nf1 = new Intl.NumberFormat('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1});
+  var dmFmt = new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'});
+  var fullFmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+  var DAY = 86400000;
+  var LS_KEY = 'suivi-poids-v1';
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function toUTC(s){ var p=s.split('-').map(Number); return Date.UTC(p[0],p[1]-1,p[2]); }
+  function fromUTC(t){ var d=new Date(t); return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate()); }
+  function addDays(s,n){ return fromUTC(toUTC(s)+n*DAY); }
+  function mondayOf(s){ var t=toUTC(s); var dow=(new Date(t).getUTCDay()+6)%7; return fromUTC(t-dow*DAY); }
+  function isoWeek(monday){ var th=new Date(toUTC(monday)+3*DAY); var jan1=Date.UTC(th.getUTCFullYear(),0,1); return Math.floor((th.getTime()-jan1)/DAY/7)+1; }
+  function fmtDM(s){ return dmFmt.format(toUTC(s)); }
+  function fmtFull(s){ return fullFmt.format(toUTC(s)); }
+  function rangeLabel(mon){
+    var sun=addDays(mon,6);
+    if(mon.slice(5,7)===sun.slice(5,7)) return Number(mon.slice(8))+'–'+fmtDM(sun);
+    return fmtDM(mon)+'–'+fmtDM(sun);
+  }
+  function kgText(v){ return nf1.format(v); }
+  function deltaText(d){
+    var r=Math.round(d*10)/10;
+    if(r===0) return '±0,0';
+    return (r>0?'+':'−')+nf1.format(Math.abs(r));
+  }
+
+  var entries = [];
+  var mode = 'loading';           // loading | db | local
+  var col = null;
+  var showAll = false;
+  var confirmDate = null;
+
+  function sortedAsc(){ return entries.slice().sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; }); }
+
+  function weeksAsc(){
+    var map = {};
+    entries.forEach(function(e){
+      var m = mondayOf(e.date);
+      if(!map[m]) map[m] = {monday:m,sum:0,n:0};
+      map[m].sum += e.kg; map[m].n += 1;
+    });
+    return Object.keys(map).sort().map(function(k){ var w=map[k]; return {monday:w.monday,n:w.n,avg:w.sum/w.n}; });
+  }
+
+  /* ---------- Résumé ---------- */
+  function renderSummary(){
+    var weeks = weeksAsc();
+    var curMon = mondayOf(todayStr());
+    var label=$('avgLabel'), val=$('avgValue'), sub=$('avgSub'), delta=$('avgDelta'), box=$('lastBox');
+    if(!weeks.length){
+      label.textContent='Moyenne de cette semaine';
+      val.innerHTML='—<small>kg</small>';
+      sub.textContent = mode==='loading' ? 'Chargement de vos pesées…' : 'Enregistrez votre première pesée pour voir la moyenne.';
+      delta.textContent=''; box.hidden=true; return;
+    }
+    var idx = weeks.findIndex(function(w){ return w.monday===curMon; });
+    if(idx<0) idx = weeks.length-1;
+    var w = weeks[idx];
+    label.textContent = w.monday===curMon ? 'Moyenne de cette semaine' : 'Moyenne de la semaine du '+fmtDM(w.monday);
+    val.innerHTML = kgText(w.avg)+'<small>kg</small>';
+    sub.textContent = w.n+' '+(w.n>1?'pesées':'pesée')+' · du '+fmtDM(w.monday)+' au '+fmtDM(addDays(w.monday,6));
+    if(idx>0){
+      var d = w.avg-weeks[idx-1].avg;
+      var r = Math.round(d*10)/10;
+      delta.textContent = (r>0?'▲ ':r<0?'▼ ':'= ')+deltaText(d)+' kg par rapport à la semaine précédente';
+    } else {
+      delta.textContent = 'Première semaine enregistrée';
+    }
+    var last = sortedAsc().slice(-1)[0];
+    $('lastKg').textContent = kgText(last.kg)+' kg';
+    $('lastDate').textContent = fmtDM(last.date);
+    box.hidden=false;
+  }
+
+  /* ---------- Courbe ---------- */
+  function renderChart(){
+    var box=$('chart'), legend=$('legend');
+    if(mode==='loading'){ box.innerHTML='<p class="empty">Chargement de vos pesées…</p>'; legend.hidden=true; return; }
+    if(!entries.length){ box.innerHTML='<p class="empty">La courbe apparaît dès votre première pesée.</p>'; legend.hidden=true; return; }
+
+    var today=todayStr();
+    var end=addDays(mondayOf(today),6);
+    var asc=sortedAsc();
+    var start=addDays(end,-83);
+    var firstMon=mondayOf(asc[0].date);
+    if(firstMon>start) start=firstMon;
+    if(start>addDays(end,-27)) start=addDays(end,-27);
+    var nd=(toUTC(end)-toUTC(start))/DAY+1;
+    var pts=asc.filter(function(e){ return e.date>=start && e.date<=end; });
+    if(!pts.length){ box.innerHTML='<p class="empty">Aucune pesée sur les 12 dernières semaines.</p>'; legend.hidden=true; return; }
+
+    var W=Math.max(box.clientWidth,280), H=250, L=44, R=10, T=14, B=30;
+    var cw=(W-L-R)/nd;
+    var vals=pts.map(function(p){return p.kg;});
+    var mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals);
+    var range=mx-mn;
+    var step = range<=3?0.5 : range<=8?1 : 2;
+    var lo=Math.floor((mn-0.2)/step)*step, hi=Math.ceil((mx+0.2)/step)*step;
+    if(hi-lo<2*step) hi=lo+2*step;
+    function X(i){ return L+(i+0.5)*cw; }
+    function Y(v){ return T+(hi-v)/(hi-lo)*(H-T-B); }
+    function dayIdx(s){ return Math.round((toUTC(s)-toUTC(start))/DAY); }
+
+    var s='';
+    for(var v=lo; v<=hi+1e-9; v+=step){
+      var yy=Y(v).toFixed(1);
+      s+='<line class="gridline" x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'"/>';
+      s+='<text class="tick" x="'+(L-8)+'" y="'+(Number(yy)+4)+'" text-anchor="end">'+(step<1?nf1.format(v):Math.round(v))+'</text>';
+    }
+    var nw=nd/7, every=Math.max(1,Math.ceil(60/(7*cw)));
+    for(var w=0; w<nw; w++){
+      var x0=L+w*7*cw;
+      s+='<line class="weekline" x1="'+x0.toFixed(1)+'" x2="'+x0.toFixed(1)+'" y1="'+T+'" y2="'+(H-B)+'"/>';
+      if(w%every===0){
+        s+='<text class="tick" x="'+(x0+3).toFixed(1)+'" y="'+(H-10)+'">'+fmtDM(addDays(start,w*7))+'</text>';
+      }
+    }
+    s+='<polyline class="daily" points="'+pts.map(function(p){ return X(dayIdx(p.date)).toFixed(1)+','+Y(p.kg).toFixed(1); }).join(' ')+'"/>';
+
+    var wk={};
+    pts.forEach(function(p){ var m=mondayOf(p.date); (wk[m]=wk[m]||[]).push(p.kg); });
+    Object.keys(wk).sort().forEach(function(m){
+      var arr=wk[m], avg=arr.reduce(function(a,b){return a+b;},0)/arr.length;
+      var i0=dayIdx(m);
+      var xa=(L+i0*cw+3).toFixed(1), xb=(L+(i0+7)*cw-3).toFixed(1), ya=Y(avg).toFixed(1);
+      s+='<line class="wavg" x1="'+xa+'" x2="'+xb+'" y1="'+ya+'" y2="'+ya+'"><title>Moyenne de la semaine du '+fmtDM(m)+' : '+kgText(avg)+' kg ('+arr.length+' pesée'+(arr.length>1?'s':'')+')</title></line>';
+      if(7*cw>=50) s+='<text class="wlabel" x="'+((Number(xa)+Number(xb))/2).toFixed(1)+'" y="'+(Number(ya)-8)+'" text-anchor="middle">'+kgText(avg)+'</text>';
+    });
+
+    pts.forEach(function(p,k){
+      var last=(k===pts.length-1);
+      s+='<circle class="'+(last?'dot-last':'dot')+'" cx="'+X(dayIdx(p.date)).toFixed(1)+'" cy="'+Y(p.kg).toFixed(1)+'" r="'+(last?5:3)+'"><title>'+fmtFull(p.date)+' : '+kgText(p.kg)+' kg</title></circle>';
+    });
+
+    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="Courbe des pesées quotidiennes et des moyennes hebdomadaires">'+s+'</svg>';
+    legend.hidden=false;
+  }
+
+  /* ---------- Tableau des semaines ---------- */
+  function renderWeeks(){
+    var box=$('weeks');
+    var weeks=weeksAsc();
+    if(!weeks.length){ box.innerHTML='<p class="note">Les moyennes hebdomadaires s’affichent ici.</p>'; return; }
+    var rows=weeks.map(function(w,i){
+      var d = i>0 ? (function(){ var r=Math.round((w.avg-weeks[i-1].avg)*10)/10; return (r>0?'▲ ':r<0?'▼ ':'')+deltaText(w.avg-weeks[i-1].avg); })() : '—';
+      return '<tr><td><strong>Semaine '+isoWeek(w.monday)+'</strong><span class="range">'+rangeLabel(w.monday)+'</span></td>'
+        +'<td class="num"><strong>'+kgText(w.avg)+'</strong> kg</td>'
+        +'<td class="num">'+w.n+'/7</td>'
+        +'<td class="num">'+d+'</td></tr>';
+    }).reverse().slice(0,12).join('');
+    box.innerHTML='<table><thead><tr><th>Semaine</th><th class="num">Moyenne</th><th class="num">Pesées</th><th class="num">Écart</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+
+  /* ---------- Historique ---------- */
+  function renderHistory(){
+    var box=$('history');
+    if(!entries.length){ box.innerHTML='<p class="note">Vos pesées apparaissent ici, de la plus récente à la plus ancienne.</p>'; return; }
+    var desc=sortedAsc().reverse();
+    var list=showAll?desc:desc.slice(0,14);
+    var html='<ul class="list">'+list.map(function(e){
+      var acts = confirmDate===e.date
+        ? '<button class="link warn" data-act="confirm" data-date="'+e.date+'">Confirmer</button><button class="link" data-act="cancel">Annuler</button>'
+        : '<button class="link" data-act="edit" data-date="'+e.date+'">Modifier</button><button class="link" data-act="del" data-date="'+e.date+'">Supprimer</button>';
+      var f=fmtFull(e.date);
+      return '<li class="row"><span class="d">'+f.charAt(0).toUpperCase()+f.slice(1)+'</span><span class="k">'+kgText(e.kg)+' kg</span><span class="acts">'+acts+'</span></li>';
+    }).join('')+'</ul>';
+    if(desc.length>14) html+='<button class="link more" data-act="toggle">'+(showAll?'Voir moins':'Voir tout ('+desc.length+')')+'</button>';
+    box.innerHTML=html;
+  }
+
+  function renderNote(){
+    var n=$('storeNote');
+    n.textContent='Vos pesées sont enregistrées sur cet appareil, dans cette application, et nulle part ailleurs. Exportez-les de temps en temps pour en garder une copie, ou pour les retrouver sur un autre téléphone.';
+  }
+
+  function updateSaveLabel(){
+    var d=$('date').value;
+    var exists=entries.some(function(e){ return e.date===d; });
+    $('save').textContent = exists ? 'Mettre à jour' : 'Enregistrer';
+  }
+
+  function render(){
+    renderSummary(); renderChart(); renderWeeks(); renderHistory(); renderNote(); updateSaveLabel();
+  }
+
+  /* ---------- Stockage ---------- */
+  function validEntry(o){
+    return o && typeof o.date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date) && typeof o.kg==='number' && isFinite(o.kg);
+  }
+  function loadLocal(){
+    try{
+      var raw=localStorage.getItem(LS_KEY);
+      var arr=raw?JSON.parse(raw):[];
+      entries=Array.isArray(arr)?arr.filter(validEntry):[];
+    }catch(e){ entries=[]; }
+  }
+  function saveLocal(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(entries)); }catch(e){} }
+
+  function startLocal(){ mode='local'; loadLocal(); render(); }
+
+  function say(msg,isErr){
+    var s=$('status'); s.textContent=msg; s.className='status'+(isErr?' err':'');
+  }
+
+  async function saveEntry(date,kg){
+    if(mode==='db'){ await col.doc('w-'+date).set({date:date,kg:kg}); return; }
+    var i=entries.findIndex(function(e){ return e.date===date; });
+    if(i>=0) entries[i]={date:date,kg:kg}; else entries.push({date:date,kg:kg});
+    saveLocal(); render();
+  }
+  async function removeEntry(date){
+    if(mode==='db'){ await col.doc('w-'+date).delete(); return; }
+    entries=entries.filter(function(e){ return e.date!==date; });
+    saveLocal(); render();
+  }
+
+  /* ---------- Événements ---------- */
+  $('form').addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    var date=$('date').value;
+    var raw=$('kg').value.trim().replace(',','.');
+    var kg=Math.round(Number(raw)*10)/10;
+    if(mode==='loading'){ say('Un instant, vos données se chargent.',true); return; }
+    if(!date || date>todayStr()){ say('Choisissez une date qui n’est pas dans le futur.',true); return; }
+    if(!raw || !isFinite(kg) || kg<20 || kg>400){ say('Entrez un poids en kg entre 20 et 400, par exemple 72,4.',true); return; }
+    var btn=$('save'); btn.disabled=true;
+    try{
+      await saveEntry(date,kg);
+      say('Pesée du '+fmtDM(date)+' enregistrée : '+kgText(kg)+' kg.',false);
+      $('kg').value='';
+    }catch(err){
+      say(err && err.code==='invalid_argument' ? 'Enregistrement refusé : votre accès à cette page est en lecture seule.' : 'L’enregistrement a échoué. Réessayez dans un instant.', true);
+    }finally{
+      btn.disabled=false; updateSaveLabel();
+    }
+  });
+
+  $('date').addEventListener('change', function(){
+    var d=$('date').value;
+    var e=entries.find(function(x){ return x.date===d; });
+    $('kg').value = e ? String(e.kg).replace('.',',') : '';
+    updateSaveLabel();
+  });
+
+  $('history').addEventListener('click', async function(ev){
+    var b=ev.target.closest('button'); if(!b) return;
+    var act=b.getAttribute('data-act'), date=b.getAttribute('data-date');
+    if(act==='toggle'){ showAll=!showAll; renderHistory(); }
+    else if(act==='del'){ confirmDate=date; renderHistory(); }
+    else if(act==='cancel'){ confirmDate=null; renderHistory(); }
+    else if(act==='confirm'){
+      confirmDate=null;
+      try{ await removeEntry(date); say('Pesée du '+fmtDM(date)+' supprimée.',false); }
+      catch(err){ say('La suppression a échoué. Réessayez dans un instant.',true); }
+      renderHistory();
+    }
+    else if(act==='edit'){
+      var e=entries.find(function(x){ return x.date===date; });
+      if(!e) return;
+      $('date').value=date; $('kg').value=String(e.kg).replace('.',',');
+      updateSaveLabel();
+      var reduce=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      $('form').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'});
+      $('kg').focus();
+    }
+  });
+
+  /* ---------- Démarrage ---------- */
+  var t=todayStr();
+  $('date').value=t; $('date').max=t;
+  render();
+
+  var rz=null;
+  if(window.ResizeObserver){
+    new ResizeObserver(function(){
+      if(rz) cancelAnimationFrame(rz);
+      rz=requestAnimationFrame(function(){ renderChart(); });
+    }).observe($('chart'));
+  }
+
+  /* ---------- Sauvegarde ---------- */
+  $('exportBtn').addEventListener('click', function(){
+    if(!entries.length){ say('Aucune pesée à exporter pour le moment.',true); return; }
+    var blob=new Blob([JSON.stringify({app:'suivi-poids',version:1,entries:sortedAsc()},null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='suivi-poids-'+todayStr()+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+    say('Sauvegarde exportée ('+entries.length+' pesées).',false);
+  });
+  $('importBtn').addEventListener('click', function(){ $('importFile').click(); });
+  $('importFile').addEventListener('change', function(){
+    var f=$('importFile').files[0]; if(!f) return;
+    var rd=new FileReader();
+    rd.onload=function(){
+      try{
+        var data=JSON.parse(rd.result);
+        var arr=Array.isArray(data)?data:data.entries;
+        if(!Array.isArray(arr)) throw new Error('format');
+        var added=0;
+        arr.filter(validEntry).forEach(function(o){
+          var kg=Math.round(o.kg*10)/10;
+          if(kg<20||kg>400) return;
+          var i=entries.findIndex(function(e){ return e.date===o.date; });
+          if(i>=0) entries[i]={date:o.date,kg:kg}; else entries.push({date:o.date,kg:kg});
+          added++;
+        });
+        saveLocal(); render();
+        say(added+' pesée'+(added>1?'s':'')+' importée'+(added>1?'s':'')+'.',false);
+      }catch(e){
+        say('Ce fichier n’est pas une sauvegarde valide.',true);
+      }
+      $('importFile').value='';
+    };
+    rd.readAsText(f);
+  });
+
+  /* ---------- Démarrage ---------- */
+  startLocal();
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>
