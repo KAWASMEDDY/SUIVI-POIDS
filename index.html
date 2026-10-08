@@ -102,13 +102,18 @@ header p{margin:0;color:var(--muted);max-width:56ch}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
 form{display:grid;gap:12px;align-content:start}
-.field{display:grid;gap:6px}
+.field{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;min-width:0}
 input{
   font:inherit;color:var(--ink);background:var(--bg);
   border:1px solid var(--line);border-radius:8px;
-  height:44px;padding-inline:12px;width:100%;min-width:0;
+  height:44px;padding-inline:12px;width:100%;min-width:0;max-width:100%;
+  display:block;box-sizing:border-box;text-align:left;
+  -webkit-appearance:none;appearance:none;
 }
-input#kg{font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums}
+input#kg,input#date{font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums}
+input[type="date"]{line-height:1.2}
+input[type="date"]::-webkit-date-and-time-value{text-align:left;min-height:1.2em;margin:0}
+input[type="date"]::-webkit-calendar-picker-indicator{opacity:.6}
 input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btn{
   font:inherit;font-weight:600;cursor:pointer;
